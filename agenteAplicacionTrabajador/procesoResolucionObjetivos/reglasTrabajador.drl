@@ -1,0 +1,66 @@
+import icaro.infraestructura.recursosOrganizacion.recursoTrazas.ItfUsoRecursoTrazas;
+import icaro.infraestructura.recursosOrganizacion.recursoTrazas.imp.componentes.InfoTraza;
+import icaro.infraestructura.entidadesBasicas.procesadorCognitivo.*;
+import icaro.infraestructura.patronAgenteCognitivo.procesadorObjetivos.gestorTareas.ItfGestorTareas;
+import icaro.infraestructura.entidadesBasicas.procesadorCognitivo.InformeDeTarea;
+import icaro.aplicaciones.agentes.componentesInternos.movimientoCtrl.*;
+
+import java.util.ArrayList;
+import java.lang.String;
+
+global ItfGestorTareas gestorTareas;
+global ItfUsoRecursoTrazas recursoTrazas;
+global String agentId;
+
+//Primera regla que se ejecutara. Solo se debe disparar una vez.
+
+rule "Generacion de componentes internos"
+ when
+    not ( exists(InfoCompMovimiento()))
+ then
+   TareaSincrona tarea3 = gestorTareas.crearTareaAsincrona(CrearComponentes.class);
+   tarea3.ejecutar( );             
+   recursoTrazas.aceptaNuevaTrazaEjecReglas(agentId," EJECUTO LA REGLA: " + drools.getRule().getName());   
+    System.out.println( "\n"+agentId +"EJECUTO LA REGLA Acciones Iniciales\n\n" ); 
+end
+rule "Acciones Iniciales"
+ when
+    infoCompmov: (InfoCompMovimiento())
+    not ( exists(Focus()))
+    not ( exists(MisObjetivos()))
+ then
+   Tarea tarea1 = gestorTareas.crearTarea(InicializarMemTrabajo.class);
+   tarea1.ejecutar( );           
+   recursoTrazas.aceptaNuevaTrazaEjecReglas(agentId," EJECUTO LA REGLA: " + drools.getRule().getName());   
+    System.out.println( "\n"+agentId +"EJECUTO LA REGLA Acciones Iniciales\n\n" ); 
+end
+rule "Generacion Objetivo Conocer MiEquipo "
+// Se genera al principio de la simulacion 
+when
+    focoActual : Focus(foco == null)
+    misObjs: MisObjetivos()
+    miStatus: RobotStatus(idRobot == agentId)
+    not (exists (MetermeEnGrupo()))
+ then
+    MetermeEnGrupo definirMiequipoObj = new MetermeEnGrupo(VocabularioRosace.IdentMisionEquipo);
+ //se genera y se focaliza
+    TareaSincrona tarea = gestorTareas.crearTareaSincrona(GenerarObjetivoyFocalizarlo.class);
+    tarea.ejecutar(definirMiequipoObj,misObjs,focoActual); 
+    System.out.println( "\n"+agentId +" EJECUTO LA REGLA: "+drools.getRule().getName()+"\n\n" );
+    System.out.println( "\n"+agentId + "Foco: NULL " +" \n\n" );
+    recursoTrazas.aceptaNuevaTrazaEjecReglas(agentId," EJECUTO LA REGLA: " + drools.getRule().getName());     
+end
+rule "Inicio consecucion Objetivo Conocer MiEquipo "
+// Consecucion Objetivo Conocer mi equipo
+when   
+    miEquipo: InfoEquipo(inicioContactoConEquipo== false)
+    miStatus: RobotStatus(idRobot == agentId)
+    obj1 : DefinirMiEquipo(state == Objetivo.SOLVING)
+    focoActual : Focus(foco == obj1)
+then
+//    TareaSincrona tarea = gestorTareas.crearTareaSincrona(ContactarMiembrosEquipo.class);
+//    tarea.ejecutar(miStatus,miEquipo); 
+    gestorTareas.ejecutar(ContactarMiembrosEquipo.class,miStatus,miEquipo );
+    System.out.println( "\n"+agentId +" EJECUTO LA REGLA: "+drools.getRule().getName()+"\n\n" );
+    recursoTrazas.aceptaNuevaTrazaEjecReglas(agentId," EJECUTO LA REGLA: " + drools.getRule().getName());     
+end
